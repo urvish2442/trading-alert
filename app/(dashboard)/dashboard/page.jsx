@@ -41,7 +41,7 @@ export default function DashboardPage() {
       const [quoteRes, statusRes, candlesRes, indicatorsRes, signalRes] = await Promise.allSettled([
         fetch("/api/market/quote"),
         fetch("/api/market/status"),
-        fetch("/api/market/candles?limit=5"),
+        fetch("/api/market/candles?limit=10"),
         fetch("/api/indicators/current"),
         fetch("/api/signals/latest"),
       ]);
@@ -58,7 +58,12 @@ export default function DashboardPage() {
 
       if (candlesRes.status === "fulfilled" && candlesRes.value.ok) {
         const data = await candlesRes.value.json();
-        setCandles(data.candles || []);
+        const rawCandles = data.candles || [];
+        // Sort descending: most recent candle on top
+        const sorted = [...rawCandles].sort(
+          (a, b) => new Date(b.candleTimestamp) - new Date(a.candleTimestamp)
+        );
+        setCandles(sorted);
       }
 
       if (indicatorsRes.status === "fulfilled" && indicatorsRes.value.ok) {
@@ -358,23 +363,54 @@ export default function DashboardPage() {
                     <th className="py-2.5 px-3">Low</th>
                     <th className="py-2.5 px-3">Close</th>
                     <th className="py-2.5 px-3">Volume</th>
-                    <th className="py-2.5 px-4">Source</th>
+                    <th className="py-2.5 px-4 text-right">Change</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40 font-mono">
-                  {candles.map((c, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/30">
-                      <td className="py-2 px-4 text-slate-300">
-                        {new Date(c.candleTimestamp).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                      <td className="py-2 px-3 text-slate-200">₹{c.open}</td>
-                      <td className="py-2 px-3 text-emerald-400">₹{c.high}</td>
-                      <td className="py-2 px-3 text-red-400">₹{c.low}</td>
-                      <td className="py-2 px-3 font-semibold text-slate-100">₹{c.close}</td>
-                      <td className="py-2 px-3 text-slate-400">{c.volume.toLocaleString()}</td>
-                      <td className="py-2 px-4 text-[10px] text-slate-500 uppercase">{c.source}</td>
-                    </tr>
-                  ))}
+                  {candles.map((c, idx) => {
+                    const isBullish = Number(c.close) >= Number(c.open);
+                    const diff = Number(c.close) - Number(c.open);
+
+                    return (
+                      <tr
+                        key={c._id || idx}
+                        className={`transition-colors border-l-2 ${
+                          isBullish
+                            ? "bg-emerald-950/20 hover:bg-emerald-950/35 border-l-emerald-500"
+                            : "bg-red-950/20 hover:bg-red-950/35 border-l-red-500"
+                        }`}
+                      >
+                        <td className="py-2.5 px-4 text-slate-300 font-medium">
+                          {new Date(c.candleTimestamp).toLocaleTimeString("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-300">₹{c.open}</td>
+                        <td className="py-2.5 px-3 text-emerald-400 font-medium">₹{c.high}</td>
+                        <td className="py-2.5 px-3 text-red-400 font-medium">₹{c.low}</td>
+                        <td className={`py-2.5 px-3 font-bold ${isBullish ? "text-emerald-400" : "text-red-400"}`}>
+                          ₹{c.close}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-400">
+                          {c.volume ? c.volume.toLocaleString("en-IN") : 0}
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          <span
+                            className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                              isBullish
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                            }`}
+                          >
+                            {isBullish ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {candles.length === 0 && (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-400">

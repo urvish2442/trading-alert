@@ -47,7 +47,7 @@ export function InstallPromptButton() {
 
   if (isInstalled) {
     return (
-      <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono px-2 py-1 bg-emerald-950/30 rounded border border-emerald-500/30">
+      <div className="hidden sm:flex items-center gap-1 text-[11px] text-emerald-400 font-mono px-2 py-1 bg-emerald-950/30 rounded border border-emerald-500/30">
         <CheckCircle2 className="h-3 w-3" />
         <span>PWA INSTALLED</span>
       </div>
@@ -63,7 +63,7 @@ export function InstallPromptButton() {
       variant="outline"
       size="sm"
       onClick={handleInstallClick}
-      className="h-8 text-xs gap-1.5 border-emerald-500/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-900/30 font-semibold"
+      className="hidden sm:flex h-8 text-xs gap-1.5 border-emerald-500/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-900/30 font-semibold"
     >
       <Download className="h-3.5 w-3.5" />
       <span>Install App</span>
