@@ -25,10 +25,14 @@ export async function POST(request) {
       result,
     });
   } catch (err) {
-    console.error("Test push notification error:", err);
+    const statusCode = err.statusCode || 500;
+    const bodyDetail = err.body ? ` (${err.body})` : "";
+    const errorMessage = `${err.message}${bodyDetail}`;
+    console.error("Test push notification error:", { statusCode, errorMessage });
+
     return NextResponse.json(
-      { error: "Failed to dispatch test notification: " + err.message },
-      { status: 500 }
+      { error: "Failed to dispatch test notification: " + errorMessage, statusCode },
+      { status: statusCode >= 400 && statusCode < 600 ? statusCode : 500 }
     );
   }
 }

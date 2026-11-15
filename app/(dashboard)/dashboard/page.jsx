@@ -18,7 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FinancialChart } from "@/components/charts/FinancialChart";
+// import { FinancialChart } from "@/components/charts/FinancialChart";
 
 const STATE_NAMES = {
   0: "FLAT",
@@ -270,7 +270,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 2: Secondary Indicators & Strategy Parameters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="p-3 rounded-lg bg-slate-900/40 border border-border/80">
           <div className="text-[11px] font-mono text-slate-400">EMA 9 (Fast)</div>
           <div className="text-sm font-mono font-semibold text-cyan-400 mt-0.5">
@@ -302,9 +302,10 @@ export default function DashboardPage() {
           </div>
           <div className="text-[10px] text-slate-400 mt-1">Zero-cost Demo Mode</div>
         </div>
-      </div>
+      </div> */}
 
-      {/* Interactive 5-Minute Technical Chart */}
+      {/* Interactive 5-Minute Technical Chart (Temporarily commented out) */}
+      {/*
       <Card className="bg-slate-900/50 border-border">
         <CardHeader className="p-4 pb-2 border-b border-border/60">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -324,6 +325,7 @@ export default function DashboardPage() {
           <FinancialChart defaultLimit={150} />
         </CardContent>
       </Card>
+      */}
 
       {/* Main Section: Recent Candles & Latest Signal Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
