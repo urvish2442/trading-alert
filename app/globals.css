@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern color-scheme declaration to prevent FOUC & theme native controls */
+    color-scheme: dark;
+
+    /* Professional Dark Trading Terminal Theme Tokens */
+    --background: 222 47% 6%;         /* #080c14 deep obsidian navy */
+    --foreground: 210 40% 98%;         /* #f8fafc bright legible text */
+
+    --card: 222 47% 9%;               /* #0d1421 card background */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 158 79% 42%;           /* #10b981 emerald buy/primary */
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 217 33% 15%;         /* #1a2333 subtle surface */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 13%;             /* #141c2b muted elements */
+    --muted-foreground: 215 20% 65%;  /* #94a3b8 */
+
+    --accent: 217 33% 17%;            /* #1f2a3e interactive hover */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 350 89% 60%;       /* #f43f5e crimson sell/danger */
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;            /* #1e293b crisp structural divider */
+    --input: 217 33% 18%;
+    --ring: 158 79% 42%;
+
+    --radius: 0.5rem;
+
+    /* Trading Terminal Semantic Accents */
+    --color-buy: #10b981;
+    --color-sell: #ef4444;
+    --color-neutral: #94a3b8;
+    --color-warning: #f59e0b;
+    --color-cyan: #38bdf8;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: #080c14;
+    color: #f8fafc;
+  }
+}
+
+/* Modern clean scrollbar styling for terminal tables and charts */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b #080c14;
+}
+
+@supports not (scrollbar-width: thin) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #080c14;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+}
+
+/* Terminal Glow Effects */
+.terminal-glow-green {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.25);
+}
+
+.terminal-glow-red {
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.25);
+}
+
+.terminal-card {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.9) 0%, rgba(13, 19, 32, 0.95) 100%);
+  border: 1px solid #1e293b;
+  backdrop-filter: blur(8px);
+}
+
