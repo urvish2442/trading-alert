@@ -20,7 +20,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }} suppressHydrationWarning>
       <head>
         {/* Modern web guidance: declare color-scheme to avoid FOUC & theme native controls */}
         <meta name="color-scheme" content="dark" />
@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="min-h-screen bg-[#080c14] text-slate-100 font-sans antialiased">
+      <body className="min-h-screen bg-[#080c14] text-slate-100 font-sans antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

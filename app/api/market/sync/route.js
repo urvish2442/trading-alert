@@ -19,9 +19,11 @@ export async function POST(request) {
 
     const result = await syncMarketCandles(range);
 
+    const message = result.message || `Synchronized ${result.totalFetched} candles (${result.newInserted} new) via ${result.provider}`;
+
     return NextResponse.json({
       status: "ok",
-      message: `Synchronized ${result.totalFetched} candles (${result.newInserted} new) via ${result.provider}`,
+      message,
       data: result,
     });
   } catch (err) {
