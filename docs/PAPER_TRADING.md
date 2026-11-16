@@ -96,3 +96,11 @@ When an opposite signal is received (e.g. `BUY PUT` while a `CE` position is act
 | `/api/paper-trading/exit` | `POST` | Triggers simulated manual paper exit for active open position. |
 | `/api/paper-trading/process` | `POST` | Triggers manual valuation update and expiry safety check. |
 
+---
+
+## 8. Historical Backtest Reports
+
+Detailed historical backtest reports and strategy simulations on completed 5-minute candles are archived in:
+- [BACKTEST_REPORT.md](file:///Volumes/Projects/Urvish/trading-alert/docs/BACKTEST_REPORT.md) — 452 5-minute candles backtest (Nov 06 – Nov 16, 2026) comparing Positional vs. Strict Intraday modes, with complete trade-by-trade log and day-by-day P&L analytics.
+
+
