@@ -5,11 +5,11 @@
 
 Act as a senior full-stack developer, Next.js architect, MongoDB database engineer, financial market data engineer, technical analyst, cybersecurity engineer, and QA engineer.
 
-Build a production-structured, mobile-friendly Progressive Web Application (PWA) for monitoring NIFTY 50 and generating intraday BUY and SELL alerts using a VWAP + EMA strategy.
+Build a production-structured, mobile-friendly Progressive Web Application (PWA) for monitoring NIFTY 50 and generating intraday BUY and SELL alerts using a VWAP + EMA strategy, complete with an automated NIFTY Options Paper Trading simulation engine.
 
-The owner is a single user who wants to monitor NIFTY 50 during working hours without continuously watching the trading terminal.
+The owner is a single user who wants to monitor NIFTY 50 during working hours without continuously watching the trading terminal, and wants to evaluate how the strategy performs when buying NIFTY CE and PE options through simulated paper execution.
 
-The owner will manually decide whether to place any trade.
+The owner will manually decide whether to place any actual real-money trade.
 
 You must build the application incrementally, test every feature, and explain important implementation decisions.
 
@@ -19,7 +19,7 @@ Work milestone by milestone.
 
 ## 2. CORE PROJECT OBJECTIVE
 
-Create a personal NIFTY 50 intraday alert application with:
+Create a personal NIFTY 50 intraday alert and paper-trading application with:
 
 - NIFTY 50 market monitoring.
 - Five-minute candle analysis.
@@ -27,6 +27,14 @@ Create a personal NIFTY 50 intraday alert application with:
 - EMA 9 indicator.
 - EMA 20 indicator.
 - Automatic BUY and SELL signal generation.
+- Automated NIFTY Options Paper Trading engine:
+  - Automatic simulation of NIFTY options buying upon confirmed strategy signals.
+  - Dynamic In-The-Money (ITM) strike selection (default 100 points ITM).
+  - Dynamic current-week expiry contract resolution via Kite Connect instrument master.
+  - Real option premium retrieval and fill simulation (Ask/Bid or LTP).
+  - Single-position state management, automatic opposite-signal reversal, and optional neutral exit.
+  - Realistic P&L accounting (gross, estimated charges, net realized & unrealized P&L).
+  - Dedicated Paper Trading dashboard with open position tracking, trade history, and monthly performance analytics.
 - PWA installation support.
 - Push notifications when the application is in the background.
 - Signal history.
@@ -36,11 +44,13 @@ Create a personal NIFTY 50 intraday alert application with:
 - MongoDB Atlas database.
 - Vercel deployment.
 
-The application must only generate alerts.
+The application must only generate alerts and simulate paper trades.
 
-NEVER place orders automatically.
+NEVER place orders automatically with a broker.
 
-NEVER implement automated buying, selling, order placement, modification, cancellation, or execution.
+NEVER implement automated buying, selling, order placement, modification, cancellation, or execution on live broker accounts.
+
+Paper trading must be completely isolated from real broker trading and must have zero access to broker order-placement endpoints.
 
 ## 3. FIXED TECHNOLOGY STACK
 
@@ -135,9 +145,13 @@ The endpoint will:
 8. Calculate VWAP, EMA 9 and EMA 20.
 9. Evaluate the strategy.
 10. Save any newly generated signal.
-11. Dispatch a Web Push notification.
-12. Update market-processing status.
-13. Return a structured execution result.
+11. Dispatch a Web Push notification if a new signal was created.
+12. If Paper Trading is enabled:
+    - Update current option premium and unrealized P&L for any active open position.
+    - Check expiry safety cutoff for open positions.
+    - If a new signal or exit condition occurred, process simulated position exit, reversal, or new entry.
+13. Update market-processing status.
+14. Return a structured execution result.
 
 The endpoint must finish within the deployed Vercel function's allowed execution duration.
 
@@ -153,11 +167,11 @@ Important: the scheduler can be delayed or fail. The system must not assume that
 
 A scheduler may call the endpoint more than once.
 
-The same candle must never generate duplicate signals.
+The same candle must never generate duplicate signals or duplicate paper trades.
 
 Use database uniqueness constraints and idempotent processing.
 
-A duplicate request must return a safe response without sending another notification.
+A duplicate request must return a safe response without sending another notification or opening duplicate simulated positions.
 
 ## 5. PROJECT STRUCTURE
 
@@ -179,6 +193,8 @@ trading-alert/
 │   │   │   └── page.jsx
 │   │   ├── charts/
 │   │   │   └── page.jsx
+│   │   ├── paper-trading/
+│   │   │   └── page.jsx
 │   │   ├── strategy/
 │   │   │   └── page.jsx
 │   │   ├── notifications/
@@ -193,6 +209,16 @@ trading-alert/
 │   │   ├── market/
 │   │   ├── indicators/
 │   │   ├── signals/
+│   │   ├── paper-trading/
+│   │   │   ├── summary/
+│   │   │   ├── trades/
+│   │   │   ├── trades/[id]/
+│   │   │   ├── open-position/
+│   │   │   ├── daily-pnl/
+│   │   │   ├── monthly-pnl/
+│   │   │   ├── settings/
+│   │   │   ├── exit/
+│   │   │   └── process/
 │   │   ├── strategies/
 │   │   ├── notifications/
 │   │   ├── cron/
@@ -207,15 +233,36 @@ trading-alert/
 │   ├── dashboard/
 │   ├── charts/
 │   ├── signals/
+│   ├── paper-trading/
+│   │   ├── PaperSummaryCards.jsx
+│   │   ├── OpenPositionCard.jsx
+│   │   ├── TradeHistoryTable.jsx
+│   │   ├── MonthlyPnlView.jsx
+│   │   ├── DailyPnlChart.jsx
+│   │   └── PaperSettingsDialog.jsx
 │   ├── strategy/
 │   ├── notifications/
 │   ├── settings/
+│   ├── pwa/
 │   └── ui/
 │
 ├── lib/
 │   ├── mongodb/
 │   │   ├── connection.js
 │   │   └── models/
+│   │       ├── User.js
+│   │       ├── BrokerSession.js
+│   │       ├── Instrument.js
+│   │       ├── Candle.js
+│   │       ├── Indicator.js
+│   │       ├── Strategy.js
+│   │       ├── StrategyState.js
+│   │       ├── Signal.js
+│   │       ├── PaperTrade.js
+│   │       ├── PaperTradingSettings.js
+│   │       ├── PushSubscription.js
+│   │       ├── NotificationLog.js
+│   │       └── SystemLog.js
 │   │
 │   ├── kite/
 │   │   ├── client.js
@@ -240,6 +287,15 @@ trading-alert/
 │   │   ├── signal-engine.js
 │   │   └── strategy-state.js
 │   │
+│   ├── paper-trading/
+│   │   ├── contract-resolver.js
+│   │   ├── strike-selector.js
+│   │   ├── expiry-resolver.js
+│   │   ├── premium-service.js
+│   │   ├── position-manager.js
+│   │   ├── pnl-engine.js
+│   │   └── paper-trading-service.js
+│   │
 │   ├── notifications/
 │   │   ├── web-push.js
 │   │   └── notification-service.js
@@ -251,6 +307,8 @@ trading-alert/
 │   └── constants/
 │
 ├── hooks/
+│   ├── use-pwa.js
+│   └── use-paper-trading.js
 ├── services/
 ├── public/
 │   ├── manifest.json
@@ -260,6 +318,7 @@ trading-alert/
 ├── tests/
 │   ├── indicators/
 │   ├── strategy/
+│   ├── paper-trading/
 │   ├── market/
 │   └── api/
 │
@@ -268,6 +327,7 @@ trading-alert/
 │   ├── DATABASE.md
 │   ├── API.md
 │   ├── STRATEGY.md
+│   ├── PAPER_TRADING.md
 │   └── DEPLOYMENT.md
 │
 ├── .env.example
@@ -277,7 +337,7 @@ trading-alert/
 ├── jsconfig.json
 └── README.md
 
-You may modify this structure when necessary, but keep clear separation between frontend, API handlers, market services, indicator calculations, and strategy logic.
+You may modify this structure when necessary, but keep clear separation between frontend, API handlers, market services, indicator calculations, strategy logic, and paper trading services.
 
 ## 6. USER AUTHENTICATION
 
@@ -313,6 +373,7 @@ For initial demo, verification, and testing without requiring paid Kite Connect 
 - Supports `NIFTYBEES.NS` ETF volume for realistic volume-weighted VWAP calculations.
 - Requires no API keys or paid credentials.
 - Allows immediate end-to-end testing of 5-minute candle analysis, indicator calculation, strategy signals, and push alerts.
+- In demo mode, option quote fetching for paper trading can run in dry-run/mock simulation mode or indicate that live Kite credentials are required for true real-time institutional option contracts.
 
 ### 2. Zerodha Kite Connect Integration (Production)
 When the user purchases the official Kite Connect API:
@@ -320,7 +381,8 @@ When the user purchases the official Kite Connect API:
 - Uses official Kite Connect API and supported Node.js SDK.
 - Documentation: https://kite.trade/docs/connect/v3/
 - Fetch current-month NIFTY futures contract dynamically for true institutional volume.
-- The candle ingestion pipeline, storage schema, indicator calculation, and strategy engine remain completely provider-agnostic.
+- Fetch active NIFTY options instruments and live quotes (`LTP`, `depth` for bid/ask) for accurate paper-trading premium simulation.
+- The candle ingestion pipeline, storage schema, indicator calculation, strategy engine, and paper-trading engine remain completely provider-agnostic.
 
 The application needs:
 
@@ -332,7 +394,7 @@ The application needs:
 - Session status.
 - Instrument master.
 - Historical candle data.
-- Quote information if needed.
+- Quote information for options and underlying.
 
 ### Authentication flow
 
@@ -600,7 +662,248 @@ Every signal should store:
 
 Use a unique database index based on the strategy, instrument, candle timestamp, and signal type.
 
-## 11. NOTIFICATIONS
+---
+
+## 11. NIFTY OPTIONS PAPER TRADING MODULE
+
+### 11.1 Objective & Architectural Isolation
+
+Add a paper-trading module that automatically simulates NIFTY options buying whenever the existing VWAP + EMA strategy generates BUY or SELL signals.
+
+The module simulates actual option premium entries, live tracking, and exits using real Kite Connect market data.
+
+**Absolute Architectural Isolation:**
+- The application must **NEVER place actual real orders** with a broker.
+- Paper trading must be completely isolated from real broker trading and must have **zero access** to broker order-placement or order-modification endpoints.
+- The module is strictly designed to evaluate how the strategy performs when buying NIFTY CE and PE options under live market conditions.
+
+### 11.2 Core Trading & Signal Mapping Logic
+
+Use the existing confirmed NIFTY 50 strategy signals as inputs:
+
+1. **When the strategy generates a BUY signal (Bullish)**:
+   - Interpret as a bullish directional event.
+   - Select a NIFTY CE (Call Option) contract.
+   - Select the current week's expiry.
+   - Select an option strike 100 points In-The-Money (ITM).
+   - Fetch the actual option premium using Kite Connect.
+   - Open a simulated BUY position.
+   - Store all entry details in MongoDB.
+
+2. **When the strategy generates a SELL signal (Bearish)**:
+   - Interpret as a bearish directional event.
+   - Select a NIFTY PE (Put Option) contract.
+   - Select the current week's expiry.
+   - Select an option strike 100 points In-The-Money (ITM).
+   - Fetch the actual option premium using Kite Connect.
+   - Open a simulated BUY position in the PE contract.
+   - Store all entry details in MongoDB.
+
+**CRITICAL RULE:**
+- **SELL signal means BUY PE.**
+- It does **NOT** mean selling an option or creating a naked short position.
+- The paper-trading module supports **option buying only** (long CE or long PE). Option writing / shorting is strictly prohibited.
+
+### 11.3 Dynamic ITM Strike Selection
+
+Implement dynamic, mathematically robust ITM strike selection:
+
+- **Reference Price:** Use the live NIFTY 50 spot price at the time of signal confirmation.
+- **ATM Calculation:** Dynamically determine the nearest At-The-Money (ATM) strike using the actual strike interval available from the Kite instrument master (typically 50 points for NIFTY):
+  `ATM Strike = Math.round(Spot Price / Strike Interval) * Strike Interval`
+- **In-The-Money (ITM) Offset:**
+  - **For CE (Call Option):** Strike must be **below ATM** (lower strike = ITM for Call):
+    `Selected CE Strike = ATM Strike - ITM Distance`
+  - **For PE (Put Option):** Strike must be **above ATM** (higher strike = ITM for Put):
+    `Selected PE Strike = ATM Strike + ITM Distance`
+- **Configurability:**
+  - Make ITM distance configurable in paper-trading settings, with **100 points** as the default.
+  - Do not hardcode strike intervals. Validate against actual available strikes in the instrument master.
+  - Display the selected contract trading symbol and strike clearly on the dashboard.
+
+*Example (assuming 50-point strike interval and 100-point ITM distance):*
+- Spot: 26,240 &rarr; ATM = 26,250
+- BUY Signal (Bullish): Buy **26,150 CE** (26,250 - 100)
+- SELL Signal (Bearish): Buy **26,350 PE** (26,250 + 100)
+
+### 11.4 Current-Week Expiry Selection & Expiry Safety Cutoff
+
+Select the nearest eligible weekly NIFTY expiry dynamically:
+
+- **Dynamic Master Query:** Query the Kite instrument master for active `NIFTY` options (`OPTIDX` / `NFO`).
+- **Nearest Eligible Expiry:**
+  - Filter for active expiry dates greater than or equal to current date in `Asia/Kolkata`.
+  - Sort chronologically and select the earliest available expiry (the current weekly expiry).
+  - Do not hardcode expiry dates or assume a fixed day of the week (e.g. Thursday), as exchange holidays or NSE schedule changes alter expiry days.
+- **Contract Verification:**
+  Always verify that the resolved contract contains:
+  1. Valid `instrumentToken`.
+  2. Exact `tradingSymbol` (e.g., `NIFTY26FEB26150CE`).
+  3. Valid `expiry` date.
+  4. Matching `strikePrice` and `instrumentType` (`CE` or `PE`).
+  5. Active lot size from the exchange.
+- **Availability Safeguard:**
+  - If the required contract is unavailable in the master or delisted, **do not create a paper trade**.
+  - Log the failure reason to `systemLogs` and display an alert on the UI.
+- **Expiry-Day Safety Cutoff:**
+  - Implement a configurable expiry safety rule (default enabled).
+  - Close any open paper position before the option's expiry-day market close (e.g. at 15:15 IST on expiry day) using a valid available market quote.
+  - **Never allow an expired option to remain indefinitely marked as a live open position.**
+
+### 11.5 Option Premium Entry & Fill Simulation
+
+After a valid strategy signal is confirmed:
+
+1. Resolve the correct option contract from the instrument master.
+2. Fetch the current option quote from the Kite Connect Quote/LTP API.
+3. Validate that the quote is non-empty, contains positive price data, and is not stale (timestamp within `quoteFreshnessLimit`).
+4. Verify that the Indian market session is active.
+5. Apply the configured **Fill-Price Method**:
+   - `ask_bid` (Recommended Default): Use the Best Ask (Offer) price for simulated BUY entry; use Best Bid price for simulated exits.
+   - `ltp`: Use Last Traded Price if depth data is unavailable or selected by configuration.
+   - Always record the `fillMethod` used (`ASK`, `BID`, or `LTP`).
+6. Create the simulated entry record with actual option premium, contract details, and execution timestamps.
+7. Save the entry transaction in MongoDB.
+
+**Strict Realism Rules:**
+- **Never invent or fabricate an option premium.**
+- **Never use the underlying NIFTY index price as the option premium.**
+- If the quote is missing, invalid, or stale, do not open a trade. Log the failure.
+- Store `quoteTimestamp` (timestamp from the exchange quote) and `entryTimestamp` (simulation timestamp) separately.
+
+### 11.6 Position Management & Single-Position Constraint
+
+Initially support **only ONE active paper position at a time**:
+
+- The system must prevent multiple simultaneous open positions under the same strategy and account.
+- Each paper trade record maintains:
+  - `tradeId` (Unique UUID / timestamp-based ID)
+  - `signalId` (Reference to triggering signal)
+  - `instrumentToken`, `tradingSymbol`, `optionType`, `strikePrice`, `expiryDate`
+  - `entryPremium`, `entryTimestamp`, `entrySpotPrice`, `entryFillMethod`
+  - `lotSize`, `numberOfLots`, `totalQuantity` (`totalQuantity = lotSize * numberOfLots`)
+  - `currentPremium`, `currentPremiumTimestamp`, `unrealizedPnl`
+  - `exitPremium`, `exitTimestamp`, `exitReason`, `exitFillMethod`, `realizedPnl`
+  - `grossPnl`, `estimatedCharges`, `netPnl`, `returnPercentage`
+  - `status`: `OPEN` | `CLOSED` | `EXPIRED` | `FAILED`
+- **Position Integrity Constraints:**
+  - Do not open a new position when an existing position is `OPEN` unless the existing position has been successfully closed.
+  - Never average down.
+  - Never increase an existing position automatically.
+  - Never pyramid positions.
+
+### 11.7 Exit and Reversal Logic
+
+Implement explicit, decoupled exit management:
+
+#### Scenario A: Opposite Signal Reversal
+- If a **CE position is OPEN** and strategy generates **SELL**:
+  1. Fetch current CE quote (Bid price / LTP).
+  2. Close the existing CE position, compute realized P&L, set status to `CLOSED`, and save exit record.
+  3. Dynamically resolve the new 100-pt ITM PE contract.
+  4. Fetch current PE quote (Ask price / LTP).
+  5. Open the new simulated PE position and save record.
+- If a **PE position is OPEN** and strategy generates **BUY**:
+  1. Fetch current PE quote (Bid price / LTP).
+  2. Close the existing PE position, compute realized P&L, set status to `CLOSED`, and save exit record.
+  3. Dynamically resolve the new 100-pt ITM CE contract.
+  4. Fetch current CE quote (Ask price / LTP).
+  5. Open the new simulated CE position and save record.
+
+**Decoupled Operation Reliability:**
+- The old position must be **successfully closed and committed to the database** before opening the new one.
+- If the exit succeeds but the new entry fails (e.g. PE quote unavailable), preserve the closed trade cleanly and record the entry failure. Never pretend both succeeded.
+- Use MongoDB transactions or idempotent sequential writes.
+
+#### Scenario B: Explicit Strategy EXIT Signal
+- If the strategy generates an explicit `EXIT PUT` or `EXIT CALL`:
+  - Close the active paper position using current market quote.
+  - Set `exitReason = "STRATEGY_EXIT"`.
+  - Do not open a new position (return to `FLAT` state).
+
+#### Scenario C: Neutral Strategy Direction
+- Add a configurable setting in `paperTradingSettings`:
+  `exitOnNeutral: boolean` (Default: `false`).
+- When `exitOnNeutral === true`: A transition from BUY or SELL to NEUTRAL generates an EXIT event and closes the open position.
+- When `exitOnNeutral === false`: A neutral state does not automatically close an open position; the trade remains open until an opposite signal, explicit exit, or expiry cutoff occurs.
+- Expose this setting clearly in both Strategy and Paper Trading settings UI.
+
+#### Scenario D: No Open Position
+- If an EXIT event arrives when no position is open, ignore it safely without creating an invalid trade record.
+
+### 11.8 P&L & Charges Calculation Engine
+
+Calculate actual option-premium profit and loss:
+
+- **Gross P&L Formula:**
+  - For an `OPEN` position (Unrealized Gross P&L):
+    `Unrealized Gross P&L = (Current Premium - Entry Premium) * Total Quantity`
+  - For a `CLOSED` position (Realized Gross P&L):
+    `Realized Gross P&L = (Exit Premium - Entry Premium) * Total Quantity`
+- **Estimated Transaction Charges:**
+  - Support configurable estimated transaction charges (brokerage, STT, exchange turnover fees, GST, stamp duty) per lot or flat per trade.
+  - Default: `0` (clean gross tracking initially, with field ready for cost estimation).
+  - Formula: `Net P&L = Gross P&L - Estimated Charges`
+  - Percentage Return: `returnPercentage = ((Exit Premium - Entry Premium) / Entry Premium) * 100`
+- **Dynamic Lot Sizing:**
+  - Fetch official `lotSize` dynamically from Kite instrument master (e.g. 75, 50, or 25 as mandated by NSE). Never hardcode the NIFTY lot size.
+  - Number of lots configurable by user (`numberOfLots`, default: `1`).
+  - `totalQuantity = lotSize * numberOfLots`.
+  - Store `entryQuantity`, `lotSize`, and `numberOfLots` immutably on the trade record so future exchange lot size changes never corrupt historical trades.
+
+### 11.9 Live Position Monitoring in Serverless Architecture
+
+Position monitoring must respect Vercel's serverless environment:
+
+- **No Persistent Process:** Do not create permanent background watchers or websockets.
+- **Scheduled Synchronization:** Integrate option position monitoring into the protected 5-minute scheduler endpoint (`/api/cron/process-market`):
+  1. Check if there is an active `OPEN` paper position.
+  2. If open, fetch the latest option quote from Kite Connect.
+  3. Validate quote freshness (`now - quoteTimestamp <= quoteFreshnessLimit`).
+  4. Update `currentPremium`, `currentPremiumTimestamp`, and `unrealizedPnl`.
+  5. Check if current time is past expiry cutoff (close position if expiry reached).
+  6. Save updated trade state to MongoDB.
+- **Freshness Indicator:** If a quote cannot be updated, display a visible "STALE QUOTE" indicator and do not report stale prices as live.
+
+### 11.10 Paper-Trading Settings & Manual Exit
+
+Configurable parameters in `paperTradingSettings`:
+- `enabled`: boolean (master switch).
+- `underlying`: `NIFTY 50`.
+- `expirySelection`: `CURRENT_WEEK`.
+- `itmDistance`: number in points (default: `100`).
+- `numberOfLots`: number (default: `1`).
+- `fillMethod`: `ASK_BID` | `LTP` (default: `ASK_BID`).
+- `exitOnNeutral`: boolean (default: `false`).
+- `estimatedCharges`: number per trade (default: `0`).
+- `quoteFreshnessLimit`: number in seconds (default: `60`).
+
+**Manual Paper Exit:**
+- Provide a "Manual Exit" button on the UI for emergency simulated closure.
+- Closes the simulated position in MongoDB using the latest available market quote.
+- **Prohibition:** Manual paper exit must only update MongoDB; it must NEVER invoke real broker order APIs.
+- Disabling paper trading stops new simulated entries but preserves existing open positions until closed manually or by signal.
+
+### 11.11 Data Validation & Safety Guarantees
+
+Never create or close a paper trade when:
+1. Kite authentication is expired or invalid.
+2. Target option contract cannot be resolved from instrument master.
+3. Expiry date is in the past or contract is expired.
+4. Strike price is unavailable.
+5. Option quote is missing, zero, or stale.
+6. Market session is closed or holiday.
+7. Lot size is invalid or zero.
+8. MongoDB write fails.
+
+**Historical Warm-Up Isolation:**
+- Do not create paper trades from historical warm-up candles.
+- Only newly confirmed live completed 5-minute candles processed during active market hours can trigger paper-trade entries.
+- Maintain an immutable audit log in `systemLogs` for every entry, exit, reversal, and rejection.
+
+---
+
+## 12. NOTIFICATIONS
 
 Use the Web Push API and a service worker.
 
@@ -615,6 +918,7 @@ Implement:
 - Unsubscribe device.
 - Send BUY notification.
 - Send SELL notification.
+- Send PAPER TRADE ENTRY & EXIT notifications (optional configuration).
 - Notification history.
 - Notification error logging.
 - Expired subscription cleanup.
@@ -649,7 +953,7 @@ Do not send notifications for duplicate signals.
 
 Handle notification failures separately from signal creation.
 
-A push failure must not delete or invalidate a saved signal.
+A push failure must not delete or invalidate a saved signal or paper trade.
 
 The PWA must work when installed on supported mobile devices.
 
@@ -659,7 +963,7 @@ Do not promise that push delivery is instantaneous.
 
 Show the notification permission status in the application.
 
-## 12. DASHBOARD DESIGN
+## 13. DASHBOARD DESIGN
 
 Create a premium dark trading terminal.
 
@@ -680,12 +984,13 @@ Display:
 5. Zerodha connection status.
 6. Strategy status.
 7. Latest signal.
-8. EMA 9.
-9. EMA 20.
-10. VWAP.
-11. Current directional bias.
-12. Five-minute chart.
-13. Recent signal history.
+8. Active Paper Trading position banner (if active).
+9. EMA 9.
+10. EMA 20.
+11. VWAP.
+12. Current directional bias.
+13. Five-minute chart.
+14. Recent signal history.
 
 ### Market status
 
@@ -731,7 +1036,7 @@ Chart data must come from the backend API.
 
 Do not calculate a different set of indicators in the chart component.
 
-## 13. APPLICATION PAGES
+## 14. APPLICATION PAGES
 
 Build these pages:
 
@@ -754,33 +1059,91 @@ Include filters for:
 
 Show historical candlestick charts with indicators and signals.
 
+### Paper Trading (`/paper-trading`)
+
+Dedicated NIFTY options paper trading simulation page:
+
+1. **Summary Cards:**
+   - Total Trades.
+   - Winning Trades vs Losing Trades.
+   - Win Rate (%).
+   - Total Realized P&L.
+   - Current Unrealized P&L.
+   - Total Net P&L (after estimated charges).
+   - Open Positions Count (`0` or `1`).
+
+2. **Open Position Section:**
+   - Active contract card displaying:
+     - Direction & Option Type (`BUY CE` or `BUY PE`).
+     - Trading Symbol (e.g., `NIFTY26FEB26150CE`).
+     - Strike Price & Expiry Date.
+     - Entry Premium, Current Premium, and Entry Timestamp.
+     - Live Unrealized P&L (amount & % return).
+     - Quote freshness indicator & timestamp.
+     - Action: Manual Paper Exit button.
+
+3. **Trade History Table:**
+   - Paginated, filterable table with columns:
+     - Date & Entry Time.
+     - Exit Time.
+     - Direction / Option Type (`CE` / `PE`).
+     - Strike & Expiry.
+     - Entry Premium & Exit Premium.
+     - Quantity & Lots.
+     - Gross P&L, Estimated Charges, Net P&L.
+     - Return (%).
+     - Status (`CLOSED`, `EXPIRED`, `FAILED`).
+     - Exit Reason (`OPPOSITE_SIGNAL`, `STRATEGY_EXIT`, `MANUAL_EXIT`, `EXPIRY_CUTOFF`).
+   - Filters: Date Range, Option Type (`CE`/`PE`), Outcome (`Winning`/`Losing`), Status.
+
+4. **Monthly Performance Analytics:**
+   - Month & Year selector.
+   - Monthly Realized Gross P&L, Charges, Net P&L.
+   - Monthly Win Rate, Average Winner, Average Loser.
+   - Daily P&L visual chart.
+   - Date-wise breakdown table:
+     - Date (Asia/Kolkata).
+     - Trades closed count.
+     - Realized P&L.
+     - Open position unrealized P&L shown separately.
+   - **Realized P&L accounting rule:** A trade is strictly counted in realized P&L on its **exit date**, not its entry date.
+
+5. **Paper Trading Settings Modal:**
+   - Toggle Enable/Disable.
+   - ITM distance selector (default 100).
+   - Number of lots selector (default 1).
+   - Fill method selection (`ASK_BID` / `LTP`).
+   - `exitOnNeutral` toggle.
+   - Estimated charges configuration.
+   - Quote freshness limit.
+
 ### Strategy
 
 Display strategy conditions.
 
 Allow enabling and disabling the strategy.
 
-Allow configuration of supported parameters.
+Allow configuration of supported parameters (including `exitOnNeutral`).
 
 Do not allow arbitrary code execution through strategy settings.
 
 ### Notifications
 
-Show device subscriptions and notification preferences.
+Show device subscriptions, notification preferences, and permission status.
 
 ### Settings
 
 Include:
 
 - Zerodha connection.
-- Market-data status.
+- Market-data provider & status.
 - Calculation instrument.
-- Notification settings.
-- Timezone.
+- Date Range candle resynchronization.
+- PWA status.
 - System status.
 - Application information.
 
-## 14. MONGODB DATABASE DESIGN
+## 15. MONGODB DATABASE DESIGN
 
 Use Mongoose models.
 
@@ -818,10 +1181,13 @@ Fields:
 - tradingSymbol
 - name
 - instrumentType
+- strikePrice
 - expiry
 - lotSize
 - isActive
 - updatedAt
+
+Indexes: `instrumentToken` (unique), `tradingSymbol`, `name + instrumentType + expiry + strikePrice`.
 
 ### candles
 
@@ -902,6 +1268,65 @@ Fields:
 
 Create a unique index preventing duplicate signals.
 
+### paperTrades
+
+Fields:
+
+- tradeId (String, unique)
+- strategyId (ObjectId / String)
+- signalId (ObjectId / String)
+- underlying (String, e.g. "NIFTY 50")
+- exchange (String, e.g. "NFO")
+- optionSymbol (String, e.g. "NIFTY26FEB26150CE")
+- instrumentToken (Number)
+- optionType (String, "CE" | "PE")
+- strikePrice (Number)
+- expiryDate (Date)
+- entryPremium (Number)
+- entryTimestamp (Date)
+- entrySpotPrice (Number)
+- entryQuantity (Number)
+- lotSize (Number)
+- numberOfLots (Number)
+- totalQuantity (Number)
+- entryFillMethod (String, "ASK" | "BID" | "LTP")
+- currentPremium (Number)
+- currentPremiumTimestamp (Date)
+- exitPremium (Number)
+- exitTimestamp (Date)
+- exitReason (String, "OPPOSITE_SIGNAL" | "STRATEGY_EXIT" | "MANUAL_EXIT" | "EXPIRY_CUTOFF")
+- exitFillMethod (String, "ASK" | "BID" | "LTP")
+- grossPnl (Number)
+- estimatedCharges (Number)
+- netPnl (Number)
+- returnPercentage (Number)
+- status (String, "OPEN" | "CLOSED" | "EXPIRED" | "FAILED")
+- createdAt (Date)
+- updatedAt (Date)
+
+Indexes:
+- `tradeId`: unique index.
+- `status`: index for rapid open-position queries.
+- `entryTimestamp`, `exitTimestamp`: indexes for date range and monthly performance aggregation.
+- `strategyId + signalId`: index preventing duplicate trades from the same signal.
+- Partial unique index: `{ strategyId: 1, status: 1 }` where `{ status: "OPEN" }` to enforce database-level guarantee of at most one OPEN position at any time.
+
+### paperTradingSettings
+
+Fields:
+
+- enabled (Boolean, default: true)
+- strategyId (String)
+- underlying (String, default: "NIFTY 50")
+- expirySelection (String, default: "CURRENT_WEEK")
+- itmDistance (Number, default: 100)
+- numberOfLots (Number, default: 1)
+- fillMethod (String, default: "ASK_BID")
+- exitOnNeutral (Boolean, default: false)
+- estimatedCharges (Number, default: 0)
+- quoteFreshnessLimit (Number, default: 60)
+- updatedAt (Date)
+
 ### pushSubscriptions
 
 Fields:
@@ -946,87 +1371,81 @@ Use appropriate indexes.
 
 Avoid unbounded queries.
 
-Do not fetch all candles or signals into memory.
+Do not fetch all candles, signals, or paper trades into memory.
 
 Implement configurable historical candle retention.
 
-Never delete signal history automatically without explicit configuration.
+Never delete signal or paper-trade history automatically without explicit configuration.
 
-## 15. API ROUTES
+## 16. API ROUTES
 
-Create structured REST API routes.
-
-Suggested endpoints:
+Create structured REST API routes:
 
 ### Authentication
 
-POST /api/auth/login
-
-POST /api/auth/logout
-
-GET /api/auth/session
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/session`
 
 ### Kite
 
-GET /api/kite/login
-
-GET /api/kite/callback
-
-GET /api/kite/status
-
-POST /api/kite/disconnect
+- `GET /api/kite/login`
+- `GET /api/kite/callback`
+- `GET /api/kite/status`
+- `POST /api/kite/disconnect`
 
 ### Market
 
-GET /api/market/status
-
-GET /api/market/quote
-
-GET /api/market/candles
-
-GET /api/market/instruments
+- `GET /api/market/status`
+- `GET /api/market/quote`
+- `GET /api/market/candles`
+- `GET /api/market/instruments`
+- `POST /api/market/sync`
 
 ### Indicators
 
-GET /api/indicators/current
-
-GET /api/indicators/history
+- `GET /api/indicators/current`
+- `GET /api/indicators/history`
 
 ### Signals
 
-GET /api/signals
+- `GET /api/signals`
+- `GET /api/signals/latest`
+- `GET /api/signals/[id]`
 
-GET /api/signals/latest
+### Paper Trading
 
-GET /api/signals/[id]
+- `GET /api/paper-trading/summary`: Returns summary statistics (total, win/loss count, win rate, realized/unrealized P&L, active position).
+- `GET /api/paper-trading/trades`: Returns paginated and filtered historical paper trades.
+- `GET /api/paper-trading/trades/[id]`: Returns detail of a specific paper trade.
+- `GET /api/paper-trading/open-position`: Returns current active OPEN paper trade with live premium and P&L.
+- `GET /api/paper-trading/daily-pnl`: Returns daily aggregated P&L data for chart rendering.
+- `GET /api/paper-trading/monthly-pnl`: Returns monthly grouped analytics and date-wise performance breakdown.
+- `GET /api/paper-trading/settings`: Fetches current paper-trading settings.
+- `PATCH /api/paper-trading/settings`: Updates paper-trading settings with Zod validation.
+- `POST /api/paper-trading/exit`: Triggers manual simulated exit for the current open paper trade.
+- `POST /api/paper-trading/process`: Manually triggers paper-trading check and quote update.
 
 ### Strategies
 
-GET /api/strategies
-
-POST /api/strategies
-
-PATCH /api/strategies/[id]
-
-POST /api/strategies/[id]/toggle
+- `GET /api/strategies`
+- `POST /api/strategies`
+- `PATCH /api/strategies/[id]`
+- `POST /api/strategies/[id]/toggle`
 
 ### Notifications
 
-POST /api/notifications/subscribe
-
-POST /api/notifications/unsubscribe
-
-GET /api/notifications/status
-
-GET /api/notifications/history
+- `POST /api/notifications/subscribe`
+- `POST /api/notifications/unsubscribe`
+- `GET /api/notifications/status`
+- `GET /api/notifications/history`
 
 ### Scheduled processing
 
-GET /api/cron/process-market
+- `GET /api/cron/process-market`
+- `POST /api/cron/process-market`
 
-POST /api/cron/process-market
-
-Protect the cron endpoint with a strong CRON_SECRET.
+Protect the cron endpoint with a strong `CRON_SECRET`.
 
 Do not allow public callers to execute market-processing jobs without authentication.
 
@@ -1038,16 +1457,16 @@ Use proper HTTP status codes.
 
 Never return raw exception details or secrets to the frontend.
 
-## 16. SECURITY RULES
+## 17. SECURITY RULES
 
 Security is mandatory.
 
-1. Never expose KITE_API_SECRET.
-2. Never expose KITE_API_KEY unnecessarily.
+1. Never expose `KITE_API_SECRET`.
+2. Never expose `KITE_API_KEY` unnecessarily.
 3. Never expose Kite access tokens to frontend code.
 4. Never expose MongoDB connection strings.
 5. Never expose VAPID private keys.
-6. Never expose CRON_SECRET.
+6. Never expose `CRON_SECRET`.
 7. Keep environment variables server-side.
 8. Use HTTPS in production.
 9. Validate all API input.
@@ -1061,37 +1480,30 @@ Security is mandatory.
 17. Restrict MongoDB network access as much as the deployment allows.
 18. Do not commit .env files.
 19. Use .env.example with placeholder values only.
-20. Keep all order-placement functionality out of the application.
+20. Keep all broker order-placement functionality out of the application.
+21. Paper trading must be completely isolated from broker ordering APIs; paper exits must never trigger real-money transactions.
 
-## 17. ENVIRONMENT VARIABLES
+## 18. ENVIRONMENT VARIABLES
 
 Create a documented .env.example.
 
 Expected variables:
 
+```env
 MONGODB_URI=
-
 MONGODB_DB_NAME=
-
 KITE_API_KEY=
-
 KITE_API_SECRET=
-
 KITE_REDIRECT_URL=
-
 CRON_SECRET=
-
 APP_ENCRYPTION_KEY=
-
 AUTH_SECRET=
-
 VAPID_PUBLIC_KEY=
-
 VAPID_PRIVATE_KEY=
-
 VAPID_SUBJECT=
-
 NEXT_PUBLIC_APP_URL=
+MARKET_DATA_PROVIDER=yahoo
+```
 
 Do not put private values in NEXT_PUBLIC variables.
 
@@ -1101,7 +1513,7 @@ When a real credential is needed, explain where the user obtains it and ask the 
 
 Do not print credentials in terminal logs or generated documentation.
 
-## 18. ERROR HANDLING AND SYSTEM RELIABILITY
+## 19. ERROR HANDLING AND SYSTEM RELIABILITY
 
 Handle the following conditions:
 
@@ -1119,21 +1531,26 @@ Handle the following conditions:
 - Expired push subscription.
 - Invalid instrument token.
 - Futures expiry or rollover.
+- Option instrument resolution failed.
+- Option quote unavailable or stale.
+- Option strike unavailable in master.
+- Expiry safety close triggered.
+- Opposite signal reverse entry failure (preserve closed trade).
 - Market holiday.
 - Market closed.
 - Stale market data.
 
-Every failure should be logged safely.
+Every failure should be logged safely in `systemLogs`.
 
-A failed market-data request must not create a signal.
+A failed market-data request must not create a signal or paper trade.
 
 A failed indicator calculation must not create a signal.
 
-A failed notification must not erase a signal.
+A failed notification must not erase a signal or paper trade.
 
 Never display stale data as live data.
 
-## 19. TESTING REQUIREMENTS
+## 20. TESTING REQUIREMENTS
 
 Use Vitest for unit tests.
 
@@ -1156,6 +1573,29 @@ Test:
 - Push subscription validation.
 - Missing candle recovery.
 - Futures rollover handling.
+- **Paper Trading Test Suite:**
+  - CE ITM strike selection (100 pt below ATM).
+  - PE ITM strike selection (100 pt above ATM).
+  - ATM strike rounding across arbitrary spot values.
+  - Dynamic strike interval handling.
+  - Weekly expiry resolution from instrument master.
+  - Rejection of expired option contracts.
+  - Option quote validation & stale quote rejection.
+  - Simulated BUY entry creation on BUY signal.
+  - Simulated BUY PE entry creation on SELL signal.
+  - Prevention of duplicate paper trades for the same signal.
+  - Prevention of concurrent multiple OPEN positions.
+  - Opposite signal position reversal (close CE &rarr; open PE, close PE &rarr; open CE).
+  - Handling failed new entry after successful exit (decoupled error state).
+  - Strategy EXIT signal position closure.
+  - Neutral exit when `exitOnNeutral` is enabled.
+  - Neutral persistence when `exitOnNeutral` is disabled.
+  - Manual paper exit execution.
+  - Expiry safety close before market end.
+  - Gross P&L, charges, and net P&L calculations.
+  - Dynamic lot sizing and quantity calculations.
+  - Daily P&L aggregation.
+  - Monthly P&L grouping (realized counted on exit date in Asia/Kolkata).
 
 Create known numerical test fixtures.
 
@@ -1165,9 +1605,9 @@ Test database indexes and duplicate prevention against a test database.
 
 Do not claim a feature is complete until its relevant tests pass.
 
-## 20. TRADING SAFETY AND BACKTESTING
+## 21. TRADING SAFETY AND BACKTESTING
 
-This is an alerting tool, not a guaranteed profitable strategy.
+This is an alerting and paper-trading simulation tool, not a guaranteed profitable trading system.
 
 Do not claim that BUY or SELL signals guarantee profit.
 
@@ -1191,20 +1631,20 @@ Define an exit methodology before calculating win rate.
 
 Remember that a directional NIFTY signal does not guarantee that an option premium will increase.
 
-Do not automatically translate a NIFTY directional signal into an option strike or execute an options order.
+Do not automatically translate a NIFTY directional signal into a live broker options order.
 
-The user makes all trading decisions manually.
+Paper trading is strictly simulated; the user makes all actual live trading decisions manually on their personal broker terminal.
 
-## 21. PWA REQUIREMENTS
+## 22. PWA REQUIREMENTS
 
 Implement:
 
-- manifest.json.
-- Service worker.
+- manifest.json with valid 192x192, 512x512, and maskable PNG icons.
+- Service worker with active `fetch` event listener (mandatory for Android Chrome installability).
 - Application icons.
-- Installable PWA.
-- Responsive mobile layout.
-- Web Push subscription.
+- Installable PWA with responsive install prompts on mobile and desktop.
+- Responsive mobile layout with dedicated mobile drawer navigation.
+- Web Push subscription with VAPID keys.
 - Notification click handling.
 - Offline fallback page.
 
@@ -1214,17 +1654,17 @@ Do not display outdated market information as current while offline.
 
 Show an offline indicator.
 
-## 22. CODING STANDARDS
+## 23. CODING STANDARDS
 
 Use JavaScript strict mode.
 
-Write clean, modular JavaScript.
+Write clean, modular JavaScript. Zero TypeScript.
 
 Use reusable components.
 
 Use meaningful variable and function names.
 
-Separate UI, database access, market logic, indicators, strategy, and notifications.
+Separate UI, database access, market logic, indicators, strategy, paper trading, and notifications.
 
 Use async/await.
 
@@ -1250,7 +1690,7 @@ Do not modify package versions unnecessarily.
 
 Do not use deprecated APIs.
 
-## 23. USER INTERFACE DESIGN RULES
+## 24. USER INTERFACE DESIGN RULES
 
 Design direction:
 
@@ -1273,10 +1713,10 @@ Requirements:
 
 Suggested visual semantics:
 
-- BUY: green.
-- SELL: red.
-- Neutral: grey.
-- Market status: contextual.
+- BUY / Call / Profit: emerald green.
+- SELL / Put / Loss: rose red.
+- Neutral: slate grey.
+- Market status: contextual badge.
 - Warning/stale data: amber.
 
 Avoid excessive animations.
@@ -1285,37 +1725,21 @@ Avoid decorative elements that interfere with market information.
 
 Do not use fake prices or fake signals.
 
-## 24. DOCUMENTATION
+## 25. DOCUMENTATION
 
 Maintain these documents:
 
-README.md
-
-Explain setup, installation, development, and deployment.
-
-docs/ARCHITECTURE.md
-
-Explain system architecture and data flow.
-
-docs/DATABASE.md
-
-Explain MongoDB collections and indexes.
-
-docs/API.md
-
-Document API endpoints and request/response examples.
-
-docs/STRATEGY.md
-
-Document exact BUY and SELL conditions.
-
-docs/DEPLOYMENT.md
-
-Explain Vercel and MongoDB deployment.
+- `README.md`: Explain setup, installation, development, and deployment.
+- `docs/ARCHITECTURE.md`: Explain system architecture and data flow.
+- `docs/DATABASE.md`: Explain MongoDB collections, models, and compound indexes.
+- `docs/API.md`: Document API endpoints and request/response examples.
+- `docs/STRATEGY.md`: Document exact BUY and SELL conditions.
+- `docs/PAPER_TRADING.md`: Document paper trading engine, ITM strike selection, expiry resolver, P&L formulas, and lifecycle.
+- `docs/DEPLOYMENT.md`: Explain Vercel and MongoDB deployment.
 
 Update documentation whenever implementation changes.
 
-## 25. DEVELOPMENT MILESTONES
+## 26. DEVELOPMENT MILESTONES
 
 Do not jump between milestones without completing the current one.
 
@@ -1410,31 +1834,59 @@ Deliverable:
 
 Reliable BUY and SELL signal generation.
 
-### MILESTONE 6: PWA AND NOTIFICATIONS
+### MILESTONE 6: PAPER TRADING ENGINE
 
 Tasks:
 
-- Implement manifest.
-- Implement service worker.
-- Implement installation support.
-- Implement VAPID.
-- Implement subscription storage.
-- Implement push delivery.
-- Implement notification history.
-- Test mobile installation and permissions.
+- Create paper-trading MongoDB models (`PaperTrade`, `PaperTradingSettings`).
+- Create compound and partial unique indexes (guaranteeing max 1 OPEN position).
+- Implement dynamic weekly expiry resolution from Kite instrument master.
+- Implement dynamic ITM strike selection (100 pt default ITM distance based on spot and strike interval).
+- Implement CE and PE contract selection.
+- Implement option premium retrieval service (Ask/Bid and LTP fill methods).
+- Implement quote freshness and market session validation.
+- Implement simulated entries upon confirmed live strategy signals (BUY &rarr; Buy CE, SELL &rarr; Buy PE).
+- Implement open position management and tracking.
+- Implement simulated exits and opposite-signal reversal (close old position before opening new).
+- Implement optional neutral exit (`exitOnNeutral` configuration).
+- Implement expiry safety cutoff closing open position before expiry day close.
+- Implement gross P&L, estimated charges, and net P&L calculation engine.
+- Implement dynamic lot-size resolution and configurable lots.
+- Implement daily and monthly P&L aggregation (realized P&L counted on exit date in Asia/Kolkata).
+- Implement paper-trading API endpoints (`summary`, `trades`, `open-position`, `daily-pnl`, `monthly-pnl`, `settings`, `exit`, `process`).
+- Build `/paper-trading` page with summary cards, active position banner, history table, and monthly analytics.
+- Add comprehensive unit and integration tests.
+
+Deliverable:
+
+A reliable paper-trading engine that automatically opens, monitors, closes, and reverses simulated NIFTY option positions based on live strategy signals, with full P&L analytics and zero live-broker execution risk.
+
+### MILESTONE 7: PWA AND NOTIFICATIONS
+
+Tasks:
+
+- Implement manifest.json with PNG and maskable icons.
+- Implement service worker with active `fetch` handler.
+- Implement installation support and responsive prompts on mobile and desktop.
+- Implement VAPID key configuration.
+- Implement push subscription storage.
+- Implement push notification delivery for signals and paper trade events.
+- Implement notification history and permissions diagnostics.
+- Test mobile installation and permissions on Android Chrome and iOS Safari.
 
 Deliverable:
 
 An installable PWA that can receive alerts when backgrounded, subject to platform support and delivery delays.
 
-### MILESTONE 7: SCHEDULER AND RECOVERY
+### MILESTONE 8: SCHEDULER AND RECOVERY
 
 Tasks:
 
-- Implement protected market-processing endpoint.
+- Implement protected market-processing endpoint (`/api/cron/process-market`).
 - Implement idempotent execution.
 - Implement completed-candle processing.
-- Implement historical recovery.
+- Integrate paper trading position monitoring and quote updates into the scheduled run.
+- Implement historical recovery without generating duplicate signals or retroactive paper trades.
 - Implement stale-data detection.
 - Implement market-calendar checks.
 - Document external scheduler configuration.
@@ -1442,46 +1894,45 @@ Tasks:
 
 Deliverable:
 
-A scheduled market-processing system that works without a persistent backend process.
+A scheduled market-processing system that works reliably within serverless execution limits without a persistent backend process.
 
-### MILESTONE 8: CHARTS AND FINAL DASHBOARD
-
-Tasks:
-
-- Implement candlestick chart.
-- Add VWAP.
-- Add EMA 9 and EMA 20.
-- Add signal markers.
-- Add latest signal card.
-- Add signal history.
-- Add market health indicators.
-- Add responsive mobile refinements.
-
-Deliverable:
-
-A complete trading alert dashboard.
-
-### MILESTONE 9: TESTING AND DEPLOYMENT
+### MILESTONE 9: CHARTS AND FINAL DASHBOARD
 
 Tasks:
 
-- Run all unit tests.
-- Run integration tests.
-- Check security.
-- Check build.
-- Check Vercel deployment.
-- Configure production environment variables.
-- Configure MongoDB network access.
-- Configure external scheduler.
-- Configure notification permissions.
-- Test actual market-data processing.
-- Document known limitations.
+- Implement candlestick chart with Lightweight Charts.
+- Add VWAP, EMA 9, and EMA 20 indicators to charts.
+- Add signal markers (BUY / SELL).
+- Add latest signal card and active paper position quick-view banner.
+- Add signal history and date-range resynchronization.
+- Add market health and diagnostic indicators.
+- Add responsive mobile refinements and slide-out navigation.
 
 Deliverable:
 
-A deployed and verified application.
+A complete, responsive trading alert and paper-trading dashboard.
 
-## 26. HOW YOU MUST WORK AS AN ANTIGRAVITY AGENT
+### MILESTONE 10: TESTING AND DEPLOYMENT
+
+Tasks:
+
+- Run all unit tests (indicators, strategy, paper trading, market calendar, security).
+- Run integration tests for all API routes and MongoDB operations.
+- Run security audit.
+- Run ESLint and Next.js production build.
+- Check Vercel deployment and verify serverless function durations.
+- Configure production environment variables in Vercel.
+- Configure MongoDB network access for Atlas cluster.
+- Configure external scheduler cron job.
+- Configure push notification permissions on production domain.
+- Test live market-data processing and simulated paper trade workflow during active market hours.
+- Document known limitations and operational runbook.
+
+Deliverable:
+
+A fully deployed, verified, and production-tested application on Vercel and MongoDB Atlas.
+
+## 27. HOW YOU MUST WORK AS AN ANTIGRAVITY AGENT
 
 Follow these rules throughout development.
 
@@ -1498,13 +1949,13 @@ Follow these rules throughout development.
 11. Fix errors before moving to the next milestone.
 12. Do not hide errors.
 13. Do not claim a feature works without testing it.
-14. Do not use placeholder implementations for critical market-data or strategy logic.
+14. Do not use placeholder implementations for critical market-data, strategy, or paper-trading logic.
 15. If a third-party API requires credentials, clearly explain the setup.
 16. If documentation is uncertain, check official documentation rather than guessing.
 17. Do not invent API endpoints, request formats, or response fields.
 18. Do not silently change strategy conditions.
 19. Do not silently change the calculation instrument.
-20. Do not introduce automated order execution.
+20. Do not introduce automated real-order execution.
 21. Keep a checklist of completed and pending tasks.
 22. Update documentation as you build.
 23. Preserve a working application at the end of each milestone.
@@ -1531,14 +1982,14 @@ G. Update the milestone checklist.
 
 H. Stop and wait for the user's approval before starting the next milestone.
 
-Do not implement all nine milestones in a single response.
+Do not implement all ten milestones in a single response.
 
-## 27. FINAL NON-NEGOTIABLE RULES
+## 28. FINAL NON-NEGOTIABLE RULES
 
 - One repository only.
 - Next.js frontend and backend only.
 - MongoDB Atlas database.
-- Vercel-compatible architecture.
+- Vercel-compatible serverless architecture.
 - No Express server.
 - No persistent Socket.IO server.
 - No permanent Kite WebSocket listener.
@@ -1548,13 +1999,16 @@ Do not implement all nine milestones in a single response.
 - Web Push notifications.
 - Single-user private application.
 - Dark trading dashboard.
-- No automated order execution.
-- No invented market data.
-- No duplicate signals.
+- Automated Paper Trading simulation only; NEVER real broker order execution.
+- Paper trading supports option buying only (BUY CE on bullish signal, BUY PE on bearish signal); NO option writing or shorting.
+- Max ONE active open paper position at a time.
+- No invented market data or premiums.
+- No duplicate signals or duplicate paper trades.
 - No signals from incomplete or stale candles.
+- No retroactive paper trades during historical warm-up or recovery.
 - No secrets in frontend code.
 - No untested critical logic.
 
-The objective is a reliable, understandable, maintainable NIFTY 50 alert application, not merely a visually attractive dashboard.
+The objective is a reliable, understandable, maintainable NIFTY 50 alert and paper-trading application, not merely a visually attractive dashboard.
 
 Start with MILESTONE 1 only.
