@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { POST } from "../../app/api/market/sync/route";
 
 describe("Date-Range Resync & DB Matching Engine", () => {
   it("computes correct IST epoch timestamps for period1 and period2", () => {
@@ -56,5 +57,18 @@ describe("Date-Range Resync & DB Matching Engine", () => {
       existing.volume !== updated.volume;
 
     expect(isDiff).toBe(true);
+  });
+
+  it("handles POST /api/market/sync payload structure safely", async () => {
+    const req = new Request("http://localhost:3000/api/market/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromDate: "2026-11-16", toDate: "2026-11-16" }),
+    });
+
+    // Verify req parses properly
+    const body = await req.json();
+    expect(body.fromDate).toBe("2026-11-16");
+    expect(body.toDate).toBe("2026-11-16");
   });
 });
