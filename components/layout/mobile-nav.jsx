@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Download,
   CheckCircle2,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Signals", href: "/signals", icon: Radio },
   { name: "Charts", href: "/charts", icon: CandlestickChart },
+  { name: "Paper Trading", href: "/paper-trading", icon: Briefcase },
   { name: "Strategy", href: "/strategy", icon: Sliders },
   { name: "Notifications", href: "/notifications", icon: BellRing },
   { name: "Settings", href: "/settings", icon: Settings },

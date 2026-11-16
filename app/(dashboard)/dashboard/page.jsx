@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   TrendingUp,
   Activity,
@@ -14,6 +15,7 @@ import {
   Radio,
   CheckCircle2,
   Compass,
+  Briefcase,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,17 +35,19 @@ export default function DashboardPage() {
   const [indicators, setIndicators] = useState(null);
   const [strategyState, setStrategyState] = useState(null);
   const [latestSignal, setLatestSignal] = useState(null);
+  const [openPosition, setOpenPosition] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
 
   const loadData = async () => {
     try {
-      const [quoteRes, statusRes, candlesRes, indicatorsRes, signalRes] = await Promise.allSettled([
+      const [quoteRes, statusRes, candlesRes, indicatorsRes, signalRes, paperPosRes] = await Promise.allSettled([
         fetch("/api/market/quote"),
         fetch("/api/market/status"),
         fetch("/api/market/candles?limit=10"),
         fetch("/api/indicators/current"),
         fetch("/api/signals/latest"),
+        fetch("/api/paper-trading/open-position"),
       ]);
 
       if (quoteRes.status === "fulfilled" && quoteRes.value.ok) {
@@ -77,6 +81,11 @@ export default function DashboardPage() {
       if (signalRes.status === "fulfilled" && signalRes.value.ok) {
         const data = await signalRes.value.json();
         setLatestSignal(data.signal);
+      }
+
+      if (paperPosRes.status === "fulfilled" && paperPosRes.value.ok) {
+        const data = await paperPosRes.value.json();
+        setOpenPosition(data.position || null);
       }
     } catch {
       // Fallback
@@ -189,6 +198,51 @@ export default function DashboardPage() {
           </Badge>
         </div>
       </div>
+
+      {/* Active Paper Position Quick Banner (GEMINI.md Section 13) */}
+      {openPosition && (
+        <div className="p-3 rounded-lg bg-slate-900/80 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-2.5 font-mono text-xs shadow-md">
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Briefcase className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <span className="text-slate-400 text-[10px] block">LIVE PAPER POSITION</span>
+              <div className="flex items-center gap-1.5">
+                <Badge
+                  variant={openPosition.optionType === "CE" ? "buy" : "sell"}
+                  className="text-[10px] px-1.5 py-0 font-bold"
+                >
+                  {openPosition.optionType === "CE" ? "LONG CE" : "LONG PE"}
+                </Badge>
+                <span className="font-bold text-slate-100">{openPosition.optionSymbol}</span>
+                <span className="text-slate-400">@ ₹{openPosition.entryPremium?.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 block">Unrealized P&amp;L</span>
+              <span
+                className={`font-bold ${
+                  (openPosition.unrealizedPnl || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {(openPosition.unrealizedPnl || 0) >= 0 ? "+" : ""}₹{openPosition.unrealizedPnl?.toFixed(2)} (
+                {openPosition.returnPercentage >= 0 ? "+" : ""}
+                {openPosition.returnPercentage?.toFixed(2)}%)
+              </span>
+            </div>
+            <Link
+              href="/paper-trading"
+              className="text-xs bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/50 px-2.5 py-1 rounded font-semibold transition-colors"
+            >
+              Terminal &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {syncMessage && (
         <div className="p-3 rounded-md bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">

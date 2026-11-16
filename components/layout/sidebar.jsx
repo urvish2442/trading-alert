@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Radio,
   CandlestickChart,
+  Briefcase,
   Sliders,
   BellRing,
   Settings,
@@ -32,6 +33,11 @@ const navigationItems = [
     name: "Charts",
     href: "/charts",
     icon: CandlestickChart,
+  },
+  {
+    name: "Paper Trading",
+    href: "/paper-trading",
+    icon: Briefcase,
   },
   {
     name: "Strategy",

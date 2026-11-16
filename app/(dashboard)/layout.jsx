@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Radio,
   CandlestickChart,
+  Briefcase,
   Settings,
 } from "lucide-react";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 const quickMobileTabs = [
   { name: "Terminal", href: "/dashboard", icon: LayoutDashboard },
   { name: "Signals", href: "/signals", icon: Radio },
+  { name: "Paper", href: "/paper-trading", icon: Briefcase },
   { name: "Charts", href: "/charts", icon: CandlestickChart },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
