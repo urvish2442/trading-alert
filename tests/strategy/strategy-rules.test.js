@@ -8,7 +8,7 @@ import {
   STATE_CALL_ACTIVE,
 } from "../../lib/strategy/strategy-rules";
 
-describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", () => {
+describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Reversal Strategy' Rules", () => {
   describe("Crossover Primitives (ta.crossover & ta.crossunder)", () => {
     it("isCrossover returns true only when previous <= target and current > target", () => {
       // Crossed over
@@ -73,12 +73,12 @@ describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", ()
     });
   });
 
-  describe("STATE 1: PUT Active", () => {
-    it("reverses to BUY CALL when vwapUp occurs without emaUp", () => {
+  describe("STATE 1: PUT Active (Bearish Trend)", () => {
+    it("reverses to BUY CALL when vwapUp occurs and close > ema9", () => {
       // vwapUp: prev close <= vwap, curr close > vwap
-      // emaUp is false: prev close was already above ema9 or curr close <= ema9
-      const prevBar = { close: 24990, vwap: 25000, ema9: 24900 };
-      const currBar = { close: 25010, vwap: 25000, ema9: 24920 };
+      // close > ema9: curr close 25020 > ema9 25005
+      const prevBar = { close: 24980, vwap: 25000, ema9: 24990 };
+      const currBar = { close: 25020, vwap: 25000, ema9: 25005 };
 
       const res = evaluateOptionBuyerStrategy(currBar, prevBar, STATE_PUT_ACTIVE);
       expect(res.buyCall).toBe(true);
@@ -86,8 +86,8 @@ describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", ()
       expect(res.newState).toBe(STATE_CALL_ACTIVE);
     });
 
-    it("triggers EXIT PUT when emaUp occurs first (trailing stop on 9 EMA)", () => {
-      // emaUp: prev close <= ema9, curr close > ema9, while vwapUp is false
+    it("triggers EXIT PUT when emaUp occurs without reversal", () => {
+      // emaUp: prev close <= ema9, curr close > ema9, while vwapUp is false (still below VWAP)
       const prevBar = { close: 24900, vwap: 25050, ema9: 24920 };
       const currBar = { close: 24940, vwap: 25050, ema9: 24930 };
 
@@ -97,7 +97,7 @@ describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", ()
       expect(res.newState).toBe(STATE_FLAT);
     });
 
-    it("stays in PUT Active state when neither crossover triggers", () => {
+    it("stays in PUT Active state when neither condition triggers", () => {
       const prevBar = { close: 24850, vwap: 25000, ema9: 24900 };
       const currBar = { close: 24820, vwap: 25000, ema9: 24880 };
 
@@ -107,12 +107,12 @@ describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", ()
     });
   });
 
-  describe("STATE 2: CALL Active", () => {
-    it("reverses to BUY PUT when vwapDown occurs without emaDown", () => {
+  describe("STATE 2: CALL Active (Bullish Trend)", () => {
+    it("reverses to BUY PUT when vwapDown occurs and close < ema9", () => {
       // vwapDown: prev close >= vwap, curr close < vwap
-      // emaDown is false: prev close was already below ema9 or curr close >= ema9
-      const prevBar = { close: 25010, vwap: 25000, ema9: 25080 };
-      const currBar = { close: 24990, vwap: 25000, ema9: 25070 };
+      // close < ema9: curr close 24980 < ema9 24995
+      const prevBar = { close: 25020, vwap: 25000, ema9: 25010 };
+      const currBar = { close: 24980, vwap: 25000, ema9: 24995 };
 
       const res = evaluateOptionBuyerStrategy(currBar, prevBar, STATE_CALL_ACTIVE);
       expect(res.buyPut).toBe(true);
@@ -120,7 +120,7 @@ describe("Pine Script v6 'NIFTY Option Buyer - VWAP EMA9 Both Trends' Rules", ()
       expect(res.newState).toBe(STATE_PUT_ACTIVE);
     });
 
-    it("triggers EXIT CALL when emaDown occurs first (trailing stop on 9 EMA)", () => {
+    it("triggers EXIT CALL when emaDown occurs without reversal", () => {
       // emaDown: prev close >= ema9, curr close < ema9, while vwapDown is false (both above VWAP)
       const prevBar = { close: 25100, vwap: 25000, ema9: 25090 };
       const currBar = { close: 25070, vwap: 25000, ema9: 25080 };

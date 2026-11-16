@@ -20,8 +20,8 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
-const STRATEGY_NAME = "NIFTY Option Buyer - VWAP EMA9 Both Trends";
-const STRATEGY_VERSION = "2.0.0";
+const STRATEGY_NAME = "NIFTY Option Buyer - VWAP EMA9 Reversal Strategy";
+const STRATEGY_VERSION = "3.0.0";
 
 const STATE_FLAT = 0;
 const STATE_PUT_ACTIVE = 1;
@@ -68,7 +68,8 @@ function evaluateOptionBuyerStrategy(currBar, prevBar, currentState = STATE_FLAT
       state = STATE_CALL_ACTIVE;
     }
   } else if (state === STATE_PUT_ACTIVE) {
-    if (vwapUp && !emaUp) {
+    // REVERSE: VWAP CROSSED UP AND CLOSE > EMA9
+    if (vwapUp && currBar.close > currBar.ema9) {
       buyCall = true;
       state = STATE_CALL_ACTIVE;
     } else if (emaUp) {
@@ -76,7 +77,8 @@ function evaluateOptionBuyerStrategy(currBar, prevBar, currentState = STATE_FLAT
       state = STATE_FLAT;
     }
   } else if (state === STATE_CALL_ACTIVE) {
-    if (vwapDown && !emaDown) {
+    // REVERSE: VWAP CROSSED DOWN AND CLOSE < EMA9
+    if (vwapDown && currBar.close < currBar.ema9) {
       buyPut = true;
       state = STATE_PUT_ACTIVE;
     } else if (emaDown) {
@@ -199,8 +201,8 @@ async function run() {
         "State 0 + vwapUp -> BUY CALL (State 2)",
       ],
       reversals: [
-        "State 1 + vwapUp and not emaUp -> BUY CALL (State 2)",
-        "State 2 + vwapDown and not emaDown -> BUY PUT (State 1)",
+        "State 1 + vwapUp and close > ema9 -> BUY CALL (State 2)",
+        "State 2 + vwapDown and close < ema9 -> BUY PUT (State 1)",
       ],
       exits: [
         "State 1 + emaUp -> EXIT PUT (State 0)",

@@ -527,9 +527,9 @@ Do not calculate indicators independently in multiple components.
 
 There must be one trusted calculation engine.
 
-## 10. ACTIVE TRADING STRATEGY: NIFTY OPTION BUYER - VWAP EMA9 BOTH TRENDS
+## 10. ACTIVE TRADING STRATEGY: NIFTY OPTION BUYER - VWAP EMA9 REVERSAL STRATEGY
 
-Implement this exact strategy based on the Pine Script v6 indicator ("NIFTY Option Buyer - VWAP EMA9 Both Trends"):
+Implement this exact strategy based on the Pine Script v6 indicator ("NIFTY Option Buyer - VWAP EMA9 Reversal Strategy"):
 
 ### Indicators
 1. **EMA 9**: 9-period Exponential Moving Average on Close.
@@ -553,12 +553,12 @@ On each confirmed completed 5-minute candle:
    - If `vwapDown`: Generate **BUY PUT** alert, transition `state = 1`.
    - Else if `vwapUp`: Generate **BUY CALL** alert, transition `state = 2`.
 
-2. **When state == 1 (PUT active)**:
-   - If `vwapUp and not emaUp`: Generate **BUY CALL** alert, transition `state = 2` (Reversal).
+2. **When state == 1 (PUT active - Bearish trend)**:
+   - If `vwapUp and close > ema9`: Generate **BUY CALL** alert, transition `state = 2` (Reversal).
    - Else if `emaUp`: Generate **EXIT PUT** alert, transition `state = 0` (Exit to Flat).
 
-3. **When state == 2 (CALL active)**:
-   - If `vwapDown and not emaDown`: Generate **BUY PUT** alert, transition `state = 1` (Reversal).
+3. **When state == 2 (CALL active - Bullish trend)**:
+   - If `vwapDown and close < ema9`: Generate **BUY PUT** alert, transition `state = 1` (Reversal).
    - Else if `emaDown`: Generate **EXIT CALL** alert, transition `state = 0` (Exit to Flat).
 
 ### Stored Signals
