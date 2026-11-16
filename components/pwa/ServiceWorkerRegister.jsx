@@ -11,6 +11,9 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
+          // Immediately check for service worker updates
+          registration.update().catch(() => {});
+
           // Check for service worker updates periodically
           registration.onupdatefound = () => {
             const installingWorker = registration.installing;

@@ -1,49 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Download, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePwaInstall } from "./usePwaInstall";
 
 export function InstallPromptButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true;
-      setIsInstalled(isStandalone);
-
-      const handleBeforeInstall = (e) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-      };
-
-      const handleAppInstalled = () => {
-        setIsInstalled(true);
-        setDeferredPrompt(null);
-      };
-
-      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-      window.addEventListener("appinstalled", handleAppInstalled);
-
-      return () => {
-        window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-        window.removeEventListener("appinstalled", handleAppInstalled);
-      };
-    }
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-    }
-    setDeferredPrompt(null);
-  };
+  const { isInstalled, canInstall, promptInstall } = usePwaInstall();
 
   if (isInstalled) {
     return (
@@ -54,7 +16,7 @@ export function InstallPromptButton() {
     );
   }
 
-  if (!deferredPrompt) {
+  if (!canInstall) {
     return null;
   }
 
@@ -62,12 +24,12 @@ export function InstallPromptButton() {
     <Button
       variant="outline"
       size="sm"
-      onClick={handleInstallClick}
-      className="hidden sm:flex h-8 text-xs gap-1.5 border-emerald-500/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-900/30 font-semibold"
+      onClick={promptInstall}
+      className="flex h-8 text-xs px-2.5 sm:px-3 gap-1.5 border-emerald-500/50 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40 font-semibold shadow-sm animate-pulse"
+      aria-label="Install NIFTY 50 Intraday Alert PWA"
     >
       <Download className="h-3.5 w-3.5" />
       <span>Install App</span>
     </Button>
   );
 }
-

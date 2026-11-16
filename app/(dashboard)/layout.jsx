@@ -12,7 +12,6 @@ import {
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { cn } from "@/lib/utils";
 
 const quickMobileTabs = [
@@ -28,9 +27,6 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-[#080c14] text-slate-100 flex">
-      {/* Auto Service Worker Registration */}
-      <ServiceWorkerRegister />
-
       {/* Desktop Persistent Sidebar */}
       <Sidebar />
 
