@@ -191,3 +191,4 @@ export function OpenPositionCard({ position, onManualExit, isExiting }) {
     </Card>
   );
 }
+

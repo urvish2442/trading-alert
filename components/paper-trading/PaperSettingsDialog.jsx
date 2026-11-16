@@ -212,3 +212,4 @@ export function PaperSettingsDialog({ settings, isOpen, onClose, onSave }) {
     </div>
   );
 }
+

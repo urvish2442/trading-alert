@@ -95,3 +95,4 @@ When an opposite signal is received (e.g. `BUY PUT` while a `CE` position is act
 | `/api/paper-trading/settings` | `GET` / `PATCH` | Manages paper trading settings (lots, ITM distance, fill method, charges). |
 | `/api/paper-trading/exit` | `POST` | Triggers simulated manual paper exit for active open position. |
 | `/api/paper-trading/process` | `POST` | Triggers manual valuation update and expiry safety check. |
+
