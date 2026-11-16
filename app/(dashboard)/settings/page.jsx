@@ -3,17 +3,16 @@
 import { useState, useEffect } from "react";
 import {
   Settings,
-  Key,
   Database,
   Cpu,
   Clock,
   Shield,
-  Activity,
   RefreshCw,
   CheckCircle2,
-  AlertTriangle,
   Radio,
-  BellRing,
+  Calendar,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +25,20 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Date Range Resync States (defaults to current date in IST)
+  const getTodayIST = () => {
+    try {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    } catch {
+      return new Date().toISOString().slice(0, 10);
+    }
+  };
+
+  const [fromDate, setFromDate] = useState(getTodayIST);
+  const [toDate, setToDate] = useState(getTodayIST);
+  const [isDateResyncing, setIsDateResyncing] = useState(false);
+  const [resyncDetails, setResyncDetails] = useState(null);
 
   const loadDiagnostics = async () => {
     setIsLoading(true);
@@ -59,6 +72,7 @@ export default function SettingsPage() {
   const handleManualSync = async (range = "5d") => {
     setIsSyncing(true);
     setActionMessage("");
+    setResyncDetails(null);
     try {
       const res = await fetch("/api/market/sync", {
         method: "POST",
@@ -67,7 +81,9 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setActionMessage(`Synced ${data.data?.totalFetched} candles (${data.data?.newInserted} new inserted) from ${data.data?.provider || "provider"}!`);
+        setActionMessage(
+          `Synced ${data.data?.totalFetched} candles (${data.data?.newInserted} new inserted) from ${data.data?.provider || "provider"}!`
+        );
         await loadDiagnostics();
       } else {
         setActionMessage("Sync error: " + (data.error || "Failed"));
@@ -77,6 +93,46 @@ export default function SettingsPage() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleDateResync = async () => {
+    if (!fromDate || !toDate) {
+      setActionMessage("Please select both From Date and To Date.");
+      return;
+    }
+
+    setIsDateResyncing(true);
+    setActionMessage("");
+    setResyncDetails(null);
+    try {
+      const res = await fetch("/api/market/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromDate, toDate }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage(data.message);
+        setResyncDetails(data.data);
+        await loadDiagnostics();
+      } else {
+        setActionMessage("Date resync error: " + (data.error || "Failed"));
+      }
+    } catch (err) {
+      setActionMessage("Date resync error: " + err.message);
+    } finally {
+      setIsDateResyncing(false);
+    }
+  };
+
+  const setDatePreset = (daysAgoStart, daysAgoEnd = 0) => {
+    const today = new Date();
+    const d1 = new Date(today.getTime() - daysAgoStart * 86400000);
+    const d2 = new Date(today.getTime() - daysAgoEnd * 86400000);
+    const fmt1 = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d1);
+    const fmt2 = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d2);
+    setFromDate(fmt1);
+    setToDate(fmt2);
   };
 
   return (
@@ -115,6 +171,135 @@ export default function SettingsPage() {
           <span>{actionMessage}</span>
         </div>
       )}
+
+      {/* Date Range Resync & Strategy Audit Card */}
+      <Card className="bg-slate-900/60 border-emerald-500/30 shadow-lg">
+        <CardHeader className="p-4 pb-3 border-b border-border/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-100">
+                <Calendar className="h-4 w-4 text-emerald-400" />
+                Refetch &amp; Match Candles by Date Range
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-400">
+                Refetches 5-minute candles for the chosen date, matches against MongoDB Atlas, updates any discrepancies, and automatically reruns the strategy engine if updated.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDatePreset(0, 0)}
+                className="h-7 px-2 text-[11px] font-mono text-slate-300 hover:text-emerald-400 border border-slate-800"
+              >
+                Today
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDatePreset(1, 1)}
+                className="h-7 px-2 text-[11px] font-mono text-slate-300 hover:text-emerald-400 border border-slate-800"
+              >
+                Yesterday
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDatePreset(4, 0)}
+                className="h-7 px-2 text-[11px] font-mono text-slate-300 hover:text-emerald-400 border border-slate-800"
+              >
+                Last 5 Days
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            {/* From Date */}
+            <div className="sm:col-span-4 space-y-1.5">
+              <label className="text-[11px] font-mono font-medium text-slate-400 block">
+                From Date (IST)
+              </label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+
+            {/* To Date */}
+            <div className="sm:col-span-4 space-y-1.5">
+              <label className="text-[11px] font-mono font-medium text-slate-400 block">
+                To Date (IST)
+              </label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+
+            {/* Action Button */}
+            <div className="sm:col-span-4">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleDateResync}
+                disabled={isDateResyncing || !fromDate || !toDate}
+                className="w-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white gap-2 shadow-sm"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isDateResyncing ? "animate-spin" : ""}`} />
+                <span>{isDateResyncing ? "Refetching & Matching..." : "Refetch & Match with DB"}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Resync Diagnostic Report */}
+          {resyncDetails && (
+            <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-2 font-mono text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Match Report ({resyncDetails.fromDate} to {resyncDetails.toDate}):</span>
+                <Badge
+                  variant={resyncDetails.strategyRerun ? "buyCall" : "terminal"}
+                  className="text-[10px]"
+                >
+                  {resyncDetails.strategyRerun ? "STRATEGY RE-EVALUATED" : "IN SYNC (NO RERUN)"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1">
+                <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px]">Total Fetched</span>
+                  <span className="text-slate-200 font-bold text-sm">{resyncDetails.totalFetched}</span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px]">Matched (Unchanged)</span>
+                  <span className="text-emerald-400 font-bold text-sm">{resyncDetails.matchedUnchanged}</span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px]">Updated OHLCV</span>
+                  <span className={`font-bold text-sm ${resyncDetails.updatedCount > 0 ? "text-amber-400" : "text-slate-400"}`}>
+                    {resyncDetails.updatedCount}
+                  </span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px]">New Inserted</span>
+                  <span className={`font-bold text-sm ${resyncDetails.newInserted > 0 ? "text-sky-400" : "text-slate-400"}`}>
+                    {resyncDetails.newInserted}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                <span>Active Signals in Database:</span>
+                <span className="text-slate-200 font-semibold">{resyncDetails.signalsCount} Signals</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* 1. Market Data Provider */}
